@@ -1,8 +1,11 @@
 require "rb-inotify"
+require "thread"
 
 class PryReload
   class Watch
     include Singleton
+
+    @@mutex = Mutex.new
 
     def initialize
       @notifier = INotify::Notifier.new
@@ -19,7 +22,7 @@ class PryReload
       if File.directory?(evt.absolute_name)
         evt.notifier.watch(evt.absolute_name)
       elsif evt.absolute_name.end_with?(".rb")
-        @modified << evt.absolute_name
+        @@mutex.synchronize { @modified << evt.absolute_name }
         #puts "modified #{evt.absolute_name}"
       end
     end
@@ -32,21 +35,23 @@ class PryReload
     end
 
     def process
-      Thread.new do
+      @thread ||= Thread.new do
         #puts "Running!"
         @notifier.run
       end
     end
 
     def reload!(output)
-      if @modified.size == 0
-        output.puts "Nothing changed!"
-      else
-        changed = @modified.dup.uniq
-        @modified = []
-        while path = changed.shift
-          output.puts "Reloading #{path}"
-          load path
+      @@mutex.synchronize do
+        if @modified.size == 0
+          output.puts "Nothing changed!"
+        else
+          changed = @modified.dup.uniq
+          @modified = []
+          while path = changed.shift
+            output.puts "Reloading #{path}"
+            load path
+          end
         end
       end
     end
