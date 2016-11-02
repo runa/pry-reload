@@ -1,8 +1,10 @@
+require "rb-inotify"
+
 class PryReload
   class Watch
     include Singleton
+
     def initialize
-      require "rb-inotify"
       @notifier = INotify::Notifier.new
       @modified = []
       setup
@@ -10,32 +12,30 @@ class PryReload
     end
 
     def dirs
-     Dir.glob("**/*/");
+      Dir.glob("**/*/");
     end
 
     def process_event(evt)
       if File.directory?(evt.absolute_name)
         evt.notifier.watch(evt.absolute_name)
-      else
-        if evt.absolute_name.end_with?(".rb")
-          @modified << evt.absolute_name
-          #puts "modified #{evt.absolute_name}"
-        end
+      elsif evt.absolute_name.end_with?(".rb")
+        @modified << evt.absolute_name
+        #puts "modified #{evt.absolute_name}"
       end
     end
 
     def setup
-      dirs.each{|dir| 
+      dirs.each do |dir|
         #puts "Listening #{dir}"
-        @notifier.watch(dir, :modify, &Proc.new{|evt| process_event(evt)})
-      }
+        @notifier.watch(dir, :modify, &Proc.new { |evt| process_event(evt) })
+      end
     end
 
     def process
-      Thread.new{
+      Thread.new do
         #puts "Running!"
         @notifier.run
-      }
+      end
     end
 
     def reload!(output)
