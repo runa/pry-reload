@@ -16,7 +16,7 @@ class PryReload
     end
 
     def dirs
-      Dir.glob('**/*/')
+      Dir.glob(['**/', '.'])
     end
 
     def process_event(evt)
@@ -44,7 +44,7 @@ class PryReload
 
     def reload!(output)
       @@mutex.synchronize do
-        if @modified.zero?
+        if @modified.length.zero?
           output.puts 'Nothing changed!'
         else
           changed = @modified.dup.uniq
