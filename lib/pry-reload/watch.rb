@@ -1,5 +1,6 @@
 require 'rb-inotify'
 require 'thread'
+require 'singleton'
 
 class PryReload
   class Watch
