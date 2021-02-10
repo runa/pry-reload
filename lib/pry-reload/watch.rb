@@ -1,4 +1,4 @@
-require 'rb-inotify'
+require 'listen'
 require 'thread'
 require 'singleton'
 
@@ -9,7 +9,6 @@ class PryReload
     @@mutex = Mutex.new
 
     def initialize
-      @notifier = INotify::Notifier.new
       @modified = []
       setup
       process
@@ -19,26 +18,22 @@ class PryReload
       Dir.glob(['**/', '.'])
     end
 
-    def process_event(evt)
-      if File.directory?(evt.absolute_name)
-        evt.notifier.watch(evt.absolute_name)
-      elsif evt.absolute_name.end_with?('.rb')
-        @@mutex.synchronize { @modified << evt.absolute_name }
-        # puts "modified #{evt.absolute_name}"
-      end
-    end
-
     def setup
-      dirs.each do |dir|
-        # puts "Listening #{dir}"
-        @notifier.watch(dir, :modify, &Proc.new { |evt| process_event(evt) })
+      @listener ||= Listen.to(*dirs, only: %r{.rb$}) do |modified, added, _removed|
+        modified.each do |file|
+          @@mutex.synchronize { @modified << file } if file.end_with?('.rb')
+        end
+
+        added.each do |file|
+          @@mutex.synchronize { @modified << file } if file.end_with?('.rb')
+        end
       end
     end
 
     def process
       @thread ||= Thread.new do
         # puts "Running!"
-        @notifier.run
+        @listener.start
       end
     end
 
