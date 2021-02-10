@@ -20,13 +20,8 @@ class PryReload
 
     def setup
       @listener ||= Listen.to(*dirs, only: %r{.rb$}) do |modified, added, _removed|
-        modified.each do |file|
-          @@mutex.synchronize { @modified << file } if file.end_with?('.rb')
-        end
-
-        added.each do |file|
-          @@mutex.synchronize { @modified << file } if file.end_with?('.rb')
-        end
+        modified.each { |file| @@mutex.synchronize { @modified << file } }
+        added.each { |file| @@mutex.synchronize { @modified << file } }
       end
     end
 
