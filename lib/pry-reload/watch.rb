@@ -19,9 +19,9 @@ class PryReload
     end
 
     def setup
-      @listener ||= Listen.to(*dirs, only: %r{.rb$}) do |modified, added, _removed|
-        modified.each { |file| @@mutex.synchronize { @modified << file } }
-        added.each { |file| @@mutex.synchronize { @modified << file } }
+      @listener ||= Listen.to(*dirs, only: %r{.rb$}) do |modified, added, removed|
+        [*modified, *added].each { |file| @@mutex.synchronize { @modified << file } }
+        removed.each { |file| @@mutex.synchronize { @modified.delete(file) } }
       end
     end
 
